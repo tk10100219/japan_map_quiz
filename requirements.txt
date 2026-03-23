@@ -1,4 +1,4 @@
 streamlit==1.31.0
-japanmap
+opencv-python-headless==4.8.0.74
+japanmap==0.0.23
 matplotlib
-opencv-python-headless
