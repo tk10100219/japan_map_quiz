@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 import random
-import plotly.express as px
-import json
+import plotly.graph_objects as go
+import requests
 
 # 1. データの準備
 data = {
     "name": ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
-    "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
+    "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四_国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
     "hint": ["一番大きい！", "りんご1位", "わんこそば", "牛タン", "なまはげ", "さくらんぼ", "赤べこ", "納豆", "餃子", "焼きまんじゅう", "深谷ねぎ", "落花生", "首都", "中華街", "お米", "石川のとなり", "兼六園", "恐竜", "富士山", "お蕎麦", "白川郷", "お茶1位", "トヨタ", "伊勢神宮", "琵琶湖", "金閣寺", "たこ焼き", "姫路城", "奈良公園の鹿", "みかんと梅", "砂丘", "出雲大社", "桃太郎", "厳島神社", "フグ", "阿波踊り", "うどん", "みかん", "坂本龍馬", "ラーメン", "有田焼", "ハウステンボス", "阿蘇山", "温泉", "マンゴー", "桜島", "美ら海"]
 }
 df = pd.DataFrame(data)
@@ -26,46 +26,49 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 【最重要】確実に色が塗れる日本語対応のGeoJSONデータを直接指定
-# このURLのデータは「name」プロパティに「東京都」などの漢字が確実に入っています
-geojson_url = "https://raw.githubusercontent.com/smartnews-archive/japan-geojson/master/japan.json"
+# 【解決策】地図データをその場でダウンロードして「色を塗る対象」を100%一致させる
+@st.cache_data
+def get_geojson():
+    url = "https://raw.githubusercontent.com/smartnews-archive/japan-geojson/master/japan.json"
+    return requests.get(url).json()
 
-df['color_val'] = 0
-if level == "Lv1: 地方":
-    df.loc[df['region'] == target['region'], 'color_val'] = 10
-else:
-    df.loc[df['name'] == target['name'], 'color_val'] = 20
+try:
+    geojson = get_geojson()
+    
+    df['color_val'] = 0
+    if level == "Lv1: 地方":
+        df.loc[df['region'] == target['region'], 'color_val'] = 1
+    else:
+        df.loc[df['name'] == target['name'], 'color_val'] = 2
 
-# Plotlyの地図設定
-fig = px.choropleth_mapbox(
-    df,
-    geojson=geojson_url,
-    locations="name",
-    featureidkey="properties.name", # ここが「漢字名」と紐付ける鍵です
-    color="color_val",
-    color_continuous_scale=[(0, "#f8f9fa"), (0.5, "orange"), (1.0, "red")],
-    range_color=[0, 20],
-    mapbox_style="white-bg", # 背景を白くして地図を見やすく
-    zoom=4.2,
-    center={"lat": 37.5, "lon": 137.5},
-    opacity=0.8
-)
+    # 真っ白を防ぐため、mapboxを使わない「Choropleth」形式に変更
+    fig = go.Figure(go.Choropleth(
+        geojson=geojson,
+        locations=df['name'],
+        z=df['color_val'],
+        featureidkey="properties.name",
+        colorscale=[[0, "#f8f9fa"], [0.5, "orange"], [1, "red"]],
+        showscale=False,
+        marker_line_color='gray',
+        marker_line_width=0.5,
+        hoverinfo='none'
+    ))
 
-# 地図の線をくっきりさせる
-fig.update_traces(marker_line_width=0.5, marker_line_color="gray")
+    fig.update_geos(
+        visible=False, 
+        projection_type="mercator",
+        fitbounds="locations"
+    )
 
-fig.update_layout(
-    margin={"r":0,"t":0,"l":0,"b":0},
-    coloraxis_showscale=False,
-    hovermode=False, # 県名が出ないように
-    mapbox_layers=[{
-        "below": 'traces',
-        "sourcetype": "raster",
-        "source": ["https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"]
-    }]
-)
+    fig.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        height=500
+    )
 
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+except:
+    st.error("地図の読み込みに失敗しました。再読み込みしてください。")
 
 # 3. クイズ部分
 if level == "Lv1: 地方":
