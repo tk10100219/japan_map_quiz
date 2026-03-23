@@ -1,6 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-from japanmap import pref_map  # ← エラー回避の切り札！
+from japanmap import pref_map
 import pandas as pd
 import random
 
@@ -27,19 +27,25 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 地図の色設定（Lv1なら地方をオレンジ、それ以外は県を赤）
+# 【ここが重要！】色の指定を「都道府県名: 色」の形式に直しました
 if level == "Lv1: 地方":
-    color_dict = {p: "orange" for p in df[df['region']==target['region']]['name']}
+    # ターゲットと同じ地方の県をすべてオレンジにする
+    target_region = target['region']
+    region_prefs = df[df['region'] == target_region]['name'].tolist()
+    color_dict = {name: "orange" for name in region_prefs}
 else:
+    # ターゲットの県だけを赤にする
     color_dict = {target['name']: "red"}
 
 # 地図の表示
 fig, ax = plt.subplots(figsize=(8, 8))
-ax.imshow(pref_map(color_dict)) # ← これで OpenCV のエラーを回避！
+# pref_mapには「都道府県名の辞書」を渡す必要があります
+ax.imshow(pref_map(color_dict)) 
 ax.axis('off')
 st.pyplot(fig)
 
 # 3. クイズ部分
+ans = "" 
 if level == "Lv1: 地方":
     st.subheader("オレンジ色の場所は何地方？")
     choices = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"]
@@ -50,7 +56,6 @@ elif level == "Lv2: 都道府県（えらぶ）":
     if st.button("💡 ヒントをみる"):
         st.info(f"ヒント：{target['hint']}")
     
-    # 正解1つ + 間違い3つの4択を作る
     all_names = df['name'].tolist()
     wrong_choices = random.sample([n for n in all_names if n != target['name']], 3)
     choices = random.sample([target['name']] + wrong_choices, 4)
@@ -61,21 +66,3 @@ else: # Lv3: 都道府県（かく）
     if st.button("💡 ヒントをみる"):
         st.info(f"ヒント：{target['hint']}")
     ans = st.text_input("答えを漢字でいれてね")
-
-# 4. 判定
-if st.button("こうげき！"):
-    is_correct = False
-    if level == "Lv1: 地方":
-        if ans == target['region']: is_correct = True
-    else:
-        if ans == target['name']: is_correct = True
-
-    if is_correct:
-        st.balloons()
-        st.success("せいかい！")
-        st.session_state.score += 1
-        st.session_state.target_idx = random.randint(0, 46)
-        st.button("次の問題へ") # リフレッシュ用のボタン
-    else:
-        st.error(f"ざんねん！ 正解は {target['region'] if level=='Lv1: 地方' else target['name']} でした")
-        st.session_state.score = 0
