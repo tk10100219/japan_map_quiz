@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 import random
-import plotly.express as px
-import json
 
-# 1. データの準備
+# 1. データの準備（座標データ付き）
 data = {
     "name": ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
     "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
+    "x": [10, 10, 10, 10, 9, 9, 9, 9, 8, 8, 8, 9, 8, 8, 7, 6, 5, 4, 7, 7, 6, 7, 6, 5, 5, 4, 4, 3, 4, 3, 2, 1, 2, 1, 1, 2, 2, 1, 1, 1, 0, 0, 1, 2, 2, 1, 0],
+    "y": [0, 1, 2, 3, 2, 3, 4, 6, 6, 5, 7, 7, 8, 9, 4, 4, 4, 4, 6, 5, 5, 7, 6, 6, 5, 5, 6, 5, 7, 7, 5, 5, 6, 6, 7, 8, 7, 7, 8, 9, 9, 10, 10, 9, 10, 11, 12],
     "hint": ["一番大きい！", "りんご1位", "わんこそば", "牛タン", "なまはげ", "さくらんぼ", "赤べこ", "納豆", "餃子", "焼きまんじゅう", "深谷ねぎ", "落花生", "首都", "中華街", "お米", "石川のとなり", "兼六園", "恐竜", "富士山", "お蕎麦", "白川郷", "お茶1位", "トヨタ", "伊勢神宮", "琵琶湖", "金閣寺", "たこ焼き", "姫路城", "奈良公園の鹿", "みかんと梅", "砂丘", "出雲大社", "桃太郎", "厳島神社", "フグ", "阿波踊り", "うどん", "みかん", "坂本龍馬", "ラーメン", "有田焼", "ハウステンボス", "阿蘇山", "温泉", "マンゴー", "桜島", "美ら海"]
 }
 df = pd.DataFrame(data)
@@ -26,40 +26,26 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 地図データの読み込み（日本語名に対応した、より安定したデータに変更）
-geojson_url = "https://raw.githubusercontent.com/isellsoap/deutschland-geojson/master/japan/jp-all.geo.json"
+# 地図の描画 (Altairを使用：シンプルで確実)
+import altair as alt
 
-# 色塗り用の数値設定
-df['color_val'] = 0
+# 色塗りの条件設定
+df['color'] = '#eeeeee' # デフォルトはグレー
 if level == "Lv1: 地方":
-    df.loc[df['region'] == target['region'], 'color_val'] = 10  # 地方全体をオレンジ
+    df.loc[df['region'] == target['region'], 'color'] = 'orange'
 else:
-    df.loc[df['name'] == target['name'], 'color_val'] = 20    # 特定の県を赤
+    df.loc[df['name'] == target['name'], 'color'] = 'red'
 
-# 地図の作成
-fig = px.choropleth_mapbox(
-    df,
-    geojson=geojson_url,
-    locations="name",
-    featureidkey="properties.name", # GeoJSON内の'name'プロパティと紐付け
-    color="color_val",
-    color_continuous_scale=[(0, "#f8f9fa"), (0.5, "orange"), (1.0, "red")],
-    range_color=[0, 20],
-    mapbox_style="carto-positron",
-    zoom=4,
-    center={"lat": 38, "lon": 138},
-    opacity=0.7
-)
+chart = alt.Chart(df).mark_rect(stroke='white', strokeWidth=2).encode(
+    x=alt.X('x:O', axis=None),
+    y=alt.Y('y:O', axis=None, sort='descending'),
+    color=alt.Color('color:N', scale=None),
+    tooltip=alt.value(None) # クイズなのでヒントを隠す
+).properties(width=500, height=600).configure_view(strokeWidth=0)
 
-fig.update_layout(
-    margin={"r":0,"t":0,"l":0,"b":0},
-    coloraxis_showscale=False,
-    hovermode=False
-)
+st.altair_chart(chart, use_container_width=True)
 
-st.plotly_chart(fig, use_container_width=True)
-
-# --- クイズ ---
+# --- クイズ部分 ---
 if level == "Lv1: 地方":
     st.subheader("オレンジ色の場所は何地方？")
     choices = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"]
