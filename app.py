@@ -1,8 +1,7 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-from japanmap import picture
 import pandas as pd
 import random
+import plotly.express as px
 
 # 1. データの準備
 data = {
@@ -18,7 +17,7 @@ st.set_page_config(page_title="都道府県クイズ", layout="centered")
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'target_idx' not in st.session_state: st.session_state.target_idx = random.randint(0, 46)
 
-# --- サイドバー (レベル選択) ---
+# --- サイドバー ---
 level = st.sidebar.selectbox("レベルをえらんでね", ["Lv1: 地方", "Lv2: 都道府県（えらぶ）", "Lv3: 都道府県（かく）"])
 st.sidebar.write(f"今の正解数: {st.session_state.score}")
 
@@ -27,60 +26,56 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 地図の色設定（名前をそのまま使える picture() を使用）
-if level == "Lv1: 地方":
-    target_region = target['region']
-    region_prefs = df[df['region'] == target_region]['name'].tolist()
-    color_dict = {name: "orange" for name in region_prefs}
-else:
-    color_dict = {target['name']: "red"}
+# 地図の描画 (Plotlyを使用)
+# 日本の地理データ(GeoJSON)を読み込み（軽量な外部データを利用）
+geojson_url = "https://raw.githubusercontent.com/fuji-nakaya/japan-geojson/master/japan.json"
 
-# 【修正の核心！】picture(color_dict) を使って、シンプルに表示する
-# これならデータ型の不一致エラー（TypeError）が起きません
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.imshow(picture(color_dict)) 
-ax.axis('off')
-st.pyplot(fig)
+df['color_val'] = 0
+if level == "Lv1: 地方":
+    df.loc[df['region'] == target['region'], 'color_val'] = 1
+else:
+    df.loc[df['name'] == target['name'], 'color_val'] = 2
+
+fig = px.choropleth_mapbox(
+    df,
+    geojson=geojson_url,
+    locations="name",
+    featureidkey="properties.name",
+    color="color_val",
+    color_continuous_scale=["#f0f0f0", "orange", "red"],
+    mapbox_style="carto-positron",
+    zoom=4,
+    center={"lat": 38, "lon": 138},
+    opacity=0.7
+)
+fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_showscale=False)
+st.plotly_chart(fig, use_container_width=True)
 
 # 3. クイズ部分
-ans = "" 
 if level == "Lv1: 地方":
     st.subheader("オレンジ色の場所は何地方？")
     choices = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"]
-    ans = st.radio("答えをえらんでね", choices, key="lv1_radio", horizontal=True)
-
+    ans = st.radio("答えをえらんでね", choices, key="lv1", horizontal=True)
 elif level == "Lv2: 都道府県（えらぶ）":
     st.subheader("赤い場所はどこかな？")
-    if st.button("💡 ヒントをみる"):
-        st.info(f"ヒント：{target['hint']}")
-    
+    if st.button("💡 ヒントをみる"): st.info(f"ヒント：{target['hint']}")
     all_names = df['name'].tolist()
-    wrong_choices = random.sample([n for n in all_names if n != target['name']], 3)
-    choices = random.sample([target['name']] + wrong_choices, 4)
-    ans = st.radio("答えをえらんでね", choices, key="lv2_radio", horizontal=True)
-
-else: # Lv3: 都道府県（かく）
+    wrong = random.sample([n for n in all_names if n != target['name']], 3)
+    choices = random.sample([target['name']] + wrong, 4)
+    ans = st.radio("答えをえらんでね", choices, key="lv2", horizontal=True)
+else:
     st.subheader("赤い場所はどこかな？")
-    if st.button("💡 ヒントをみる"):
-        st.info(f"ヒント：{target['hint']}")
+    if st.button("💡 ヒントをみる"): st.info(f"ヒント：{target['hint']}")
     ans = st.text_input("答えを漢字でいれてね")
 
-# 4. 判定
 if st.button("こうげき！"):
-    is_correct = False
-    if level == "Lv1: 地方":
-        if ans == target['region']: is_correct = True
-    else:
-        if ans == target['name']: is_correct = True
-
+    is_correct = (ans == target['region']) if level == "Lv1: 地方" else (ans == target['name'])
     if is_correct:
         st.balloons()
         st.success("せいかい！")
         st.session_state.score += 1
         st.session_state.target_idx = random.randint(0, 46)
-        # 画面を更新して次の問題へ
-        if st.button("次の問題へ"):
-            st.rerun()
+        if st.button("次の問題へ"): st.rerun()
     else:
-        st.error(f"ざんねん！ 正解は {target['region'] if level=='Lv1: 地方' else target['name']} でした")
+        st.error(f"ざんねん！ 正解は {target['region'] if level=='Lv1: 地方' else target['name']}")
         st.session_state.score = 0
