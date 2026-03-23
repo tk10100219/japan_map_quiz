@@ -39,20 +39,40 @@ if level == "Lv1: 地方":
     st.subheader("オレンジ色の場所は何地方？")
     choices = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"]
     ans = st.radio("答えをえらんでね", choices, horizontal=True)
-else:
+
+elif level == "Lv2: 都道府県（えらぶ）":
+    st.subheader("赤い場所はどこかな？")
+    if st.button("💡 ヒントをみる"):
+        st.info(f"ヒント：{target['hint']}")
+    
+    # 正解と適当な3つの選択肢を混ぜて4択を作る
+    all_prefs = [p['name'] for p in prefectures]
+    wrong_choices = random.sample([p for p in all_prefs if p != target['name']], 3)
+    choices = random.sample([target['name']] + wrong_choices, 4)
+    
+    ans = st.radio("答えをえらんでね", choices, horizontal=True)
+
+else: # Lv3: 都道府県（かく）
     st.subheader("赤い場所はどこかな？")
     if st.button("💡 ヒントをみる"):
         st.info(f"ヒント：{target['hint']}")
     ans = st.text_input("答えを漢字でいれてね")
 
 if st.button("こうげき！"):
-    correct = (level == "Lv1: 地方" and ans == target['region']) or (ans == target['name'])
-    if correct:
+    # 正解判定（Lv1は地方名、それ以外は県名でチェック）
+    is_correct = False
+    if level == "Lv1: 地方":
+        if ans == target['region']: is_correct = True
+    else:
+        if ans == target['name']: is_correct = True
+
+    if is_correct:
         st.balloons()
         st.success("せいかい！")
         st.session_state.score += 1
+        # 次の問題へ
         st.session_state.target_idx = random.randint(0, 46)
-        st.button("つぎへ")
+        st.rerun() # 画面をリフレッシュして次の問題へ
     else:
         st.error("ざんねん！")
         st.session_state.score = 0
