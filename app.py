@@ -4,6 +4,7 @@ import random
 import plotly.express as px
 
 # 1. データの準備
+# 確実に色が塗られるよう、都道府県名を正式名称（「都府県」付き）に統一しています
 data = {
     "name": ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
     "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
@@ -26,29 +27,38 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 地図の描画 (Plotlyを使用)
-# 日本の地理データ(GeoJSON)を読み込み（軽量な外部データを利用）
+# 地図の描画
+# 日本の地理データ(GeoJSON)
 geojson_url = "https://raw.githubusercontent.com/fuji-nakaya/japan-geojson/master/japan.json"
 
+# 色を塗るためのフラグを作成（0: グレー, 1: オレンジ, 2: 赤）
 df['color_val'] = 0
 if level == "Lv1: 地方":
     df.loc[df['region'] == target['region'], 'color_val'] = 1
 else:
     df.loc[df['name'] == target['name'], 'color_val'] = 2
 
+# 地図の作成
 fig = px.choropleth_mapbox(
     df,
     geojson=geojson_url,
-    locations="name",
-    featureidkey="properties.name",
+    locations="name",            # dfの"name"列（「東京都」など）を使用
+    featureidkey="properties.name", # GeoJSON側の名前キーを指定
     color="color_val",
-    color_continuous_scale=["#f0f0f0", "orange", "red"],
+    color_continuous_scale=[(0, "#eeeeee"), (0.5, "orange"), (1, "red")], # 0はグレー、1はオレンジ、2は赤
+    range_color=[0, 2],
     mapbox_style="carto-positron",
     zoom=4,
     center={"lat": 38, "lon": 138},
-    opacity=0.7
+    opacity=0.8
 )
-fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_showscale=False)
+
+fig.update_layout(
+    margin={"r":0,"t":0,"l":0,"b":0}, 
+    coloraxis_showscale=False,
+    hovermode=False # クイズなのでヒントが出ないようホバーをオフ
+)
+
 st.plotly_chart(fig, use_container_width=True)
 
 # 3. クイズ部分
