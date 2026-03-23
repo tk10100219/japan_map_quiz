@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import random
 import plotly.express as px
+import json
 
 # 1. データの準備
-# 確実に色が塗られるよう、都道府県名を正式名称（「都府県」付き）に統一しています
 data = {
     "name": ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
     "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
@@ -18,7 +18,6 @@ st.set_page_config(page_title="都道府県クイズ", layout="centered")
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'target_idx' not in st.session_state: st.session_state.target_idx = random.randint(0, 46)
 
-# --- サイドバー ---
 level = st.sidebar.selectbox("レベルをえらんでね", ["Lv1: 地方", "Lv2: 都道府県（えらぶ）", "Lv3: 都道府県（かく）"])
 st.sidebar.write(f"今の正解数: {st.session_state.score}")
 
@@ -27,41 +26,40 @@ target = df.iloc[st.session_state.target_idx]
 # --- メイン画面 ---
 st.title("🗾 都道府県クイズ")
 
-# 地図の描画
-# 日本の地理データ(GeoJSON)
-geojson_url = "https://raw.githubusercontent.com/fuji-nakaya/japan-geojson/master/japan.json"
+# 地図データの読み込み（日本語名に対応した、より安定したデータに変更）
+geojson_url = "https://raw.githubusercontent.com/isellsoap/deutschland-geojson/master/japan/jp-all.geo.json"
 
-# 色を塗るためのフラグを作成（0: グレー, 1: オレンジ, 2: 赤）
+# 色塗り用の数値設定
 df['color_val'] = 0
 if level == "Lv1: 地方":
-    df.loc[df['region'] == target['region'], 'color_val'] = 1
+    df.loc[df['region'] == target['region'], 'color_val'] = 10  # 地方全体をオレンジ
 else:
-    df.loc[df['name'] == target['name'], 'color_val'] = 2
+    df.loc[df['name'] == target['name'], 'color_val'] = 20    # 特定の県を赤
 
 # 地図の作成
 fig = px.choropleth_mapbox(
     df,
     geojson=geojson_url,
-    locations="name",            # dfの"name"列（「東京都」など）を使用
-    featureidkey="properties.name", # GeoJSON側の名前キーを指定
+    locations="name",
+    featureidkey="properties.name", # GeoJSON内の'name'プロパティと紐付け
     color="color_val",
-    color_continuous_scale=[(0, "#eeeeee"), (0.5, "orange"), (1, "red")], # 0はグレー、1はオレンジ、2は赤
-    range_color=[0, 2],
+    color_continuous_scale=[(0, "#f8f9fa"), (0.5, "orange"), (1.0, "red")],
+    range_color=[0, 20],
     mapbox_style="carto-positron",
     zoom=4,
     center={"lat": 38, "lon": 138},
-    opacity=0.8
+    opacity=0.7
 )
 
 fig.update_layout(
-    margin={"r":0,"t":0,"l":0,"b":0}, 
+    margin={"r":0,"t":0,"l":0,"b":0},
     coloraxis_showscale=False,
-    hovermode=False # クイズなのでヒントが出ないようホバーをオフ
+    hovermode=False
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-# 3. クイズ部分
+# --- クイズ ---
 if level == "Lv1: 地方":
     st.subheader("オレンジ色の場所は何地方？")
     choices = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州"]
