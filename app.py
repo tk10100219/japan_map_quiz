@@ -5,6 +5,7 @@ import pandas as pd
 import random
 import time
 import os
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # --- 1. データ準備 ---
 data = {
