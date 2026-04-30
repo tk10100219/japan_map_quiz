@@ -113,7 +113,7 @@ with tab2:
                 st.session_state.target_idx = random.randint(0, 46)
                 st.rerun()
             else:
-                st.error("ざんねん！")
+                st.error(f"ざんねん！正解は「{correct_ans}」だったよ！")
                 st.session_state.score = 0
 
 # --- タブ3: Level 天下統一 (タイムアタック) ---
@@ -151,16 +151,17 @@ with tab3:
             ans_t = st.selectbox("この県はどこ？", ["（えらんでね）"] + sorted(df[df['region'] == st.session_state.tenka_region]['name'].tolist()), key="tenka_ans")
             if st.button("決定！", key="tenka_btn"):
                 if ans_t == current_p:
+                    st.success(f"⭕️ 正解！ {current_p} 攻略！")
                     st.session_state.remaining_prefs.pop(0)
                     if not st.session_state.remaining_prefs:
                         st.session_state.tenka_end_time = time.time()
                         st.session_state.tenka_status = "finished"
+                    time.sleep(0.5)
                     st.rerun()
                 else:
-                    st.error("間違えると統一失敗！最初からやり直しだ！")
-                    st.session_state.tenka_status = "idle"
-                    time.sleep(1.5)
-                    st.rerun()
+                    st.error(f"❌ まちがい！ 正解は【{current_p}】だよ。")
+                    st.info("正解するまで次に進めないぞ！がんばれ！")
+                    # ここで st.rerun() をあえて行わないことで、間違いメッセージを表示したままにします
 
     elif st.session_state.tenka_status == "finished":
         final_time = st.session_state.tenka_end_time - st.session_state.tenka_start_time
