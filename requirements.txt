@@ -2,3 +2,4 @@ streamlit
 pandas
 matplotlib
 japanmap
+opencv-python-headless
