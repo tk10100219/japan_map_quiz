@@ -1,5 +1,5 @@
 streamlit
-japanmap
+pandas
 matplotlib
-ipython
+japanmap
 opencv-python-headless
