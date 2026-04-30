@@ -1,4 +1,5 @@
-streamlit>=1.31.0
+streamlit
 pandas
 matplotlib
 japanmap==0.0.23
+opencv-python-headless==4.8.0.74
