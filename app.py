@@ -33,6 +33,7 @@ def save_ranking(name, region, score):
     new_data = pd.DataFrame([[name, region, round(score, 2)]], columns=["名前", "地方", "タイム(秒)"])
     rdf = pd.concat([rdf, new_data], ignore_index=True)
     if not rdf.empty:
+        # 重複削除：同一人物の同一地方ベストタイムのみ残す
         rdf = rdf.sort_values("タイム(秒)").drop_duplicates(subset=["名前", "地方"], keep="first")
     rdf.to_csv(RANKING_FILE, index=False)
 
@@ -77,7 +78,7 @@ with tab1:
         st.pyplot(fig)
         st.success(f"いま赤くなっているのが **【 {selected_pref} 】** だよ！")
 
-# --- タブ2: クイズに挑戦 (通常モード) ---
+# --- タブ2: クイズに挑戦 ---
 with tab2:
     level = st.sidebar.selectbox("レベル", ["レベル1: 地方あて", "レベル2: 都道府県あて(地方限定)", "レベル3: 都道府県あて(全国)"])
     target = df.iloc[st.session_state.target_idx]
@@ -152,7 +153,7 @@ with tab3:
             if st.button("決定！", key="tenka_btn"):
                 if ans_t == current_p:
                     st.success(f"⭕️ 正解！ {current_p} 攻略！")
-                    st.session_state.remaining_prefs.pop(0) # 正解したのでリストから消す
+                    st.session_state.remaining_prefs.pop(0)
                     if not st.session_state.remaining_prefs:
                         st.session_state.tenka_end_time = time.time()
                         st.session_state.tenka_status = "finished"
@@ -160,19 +161,32 @@ with tab3:
                     st.rerun()
                 else:
                     st.error(f"❌ まちがい！ 正解は【{current_p}】だよ。")
-                    # リストをシャッフルして順番を入れ替える（現在の問題は後ろのどこかへ行く）
                     random.shuffle(st.session_state.remaining_prefs)
                     st.info("順番を入れ替えたぞ！他の県から攻め落とそう！")
-                    time.sleep(1.5)
+                    time.sleep(1.2)
                     st.rerun()
 
     elif st.session_state.tenka_status == "finished":
         final_time = st.session_state.tenka_end_time - st.session_state.tenka_start_time
         st.balloons()
-        st.header(f"🎊 {st.session_state.tenka_region} 統一完了！")
-        st.subheader(f"記録: {final_time:.2f} 秒")
+        
+        # 記録を保存
         save_ranking(st.session_state.tenka_user, st.session_state.tenka_region, final_time)
         
-        if st.button("もう一度挑戦 / 他の地方へ"):
+        # 攻略後画面
+        st.header(f"🎊 {st.session_state.tenka_region} 統一完了！")
+        st.subheader(f"軍師 {st.session_state.tenka_user} 殿の記録: {final_time:.2f} 秒")
+        
+        st.divider()
+        st.subheader(f"🏆 {st.session_state.tenka_region}地方 歴代記録（TOP5）")
+        
+        # 最新のランキングを読み込んでその地方のTOP5を表示
+        current_rank = load_ranking()
+        res_df = current_rank[current_rank["地方"] == st.session_state.tenka_region].sort_values(by="タイム(秒)").head(5)
+        if not res_df.empty:
+            res_df.index = range(1, len(res_df) + 1)
+            st.table(res_df[["名前", "タイム(秒)"]])
+        
+        if st.button("トップに戻る / 他の地方へ"):
             st.session_state.tenka_status = "idle"
             st.rerun()
