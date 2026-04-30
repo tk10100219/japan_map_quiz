@@ -2,4 +2,4 @@ streamlit
 pandas
 matplotlib
 japanmap
-opencv-python-headless==4.8.0.74
+opencv-python-headless
