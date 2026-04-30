@@ -17,7 +17,7 @@ data = {
 }
 df = pd.DataFrame(data)
 
-# --- 2. ランキング管理用関数（重複削除版） ---
+# --- 2. ランキング管理用関数 ---
 RANKING_FILE = "ranking_tenka.csv"
 
 def load_ranking():
@@ -31,15 +31,9 @@ def load_ranking():
 def save_ranking(name, region, score):
     rdf = load_ranking()
     new_data = pd.DataFrame([[name, region, round(score, 2)]], columns=["名前", "地方", "タイム(秒)"])
-    
-    # データを結合
     rdf = pd.concat([rdf, new_data], ignore_index=True)
-    
-    # --- 重複削除ロジック ---
-    # 名前と地方が同じ場合、一番タイムが速い（最小値）ものだけを残す
     if not rdf.empty:
         rdf = rdf.sort_values("タイム(秒)").drop_duplicates(subset=["名前", "地方"], keep="first")
-    
     rdf.to_csv(RANKING_FILE, index=False)
 
 # --- 3. ページ基本設定 ---
@@ -122,7 +116,7 @@ with tab2:
             else:
                 st.error(f"ざんねん！正解は「{correct_ans}」だったよ！")
 
-# --- タブ3: Level 天下統一 (タイムアタック) ---
+# --- タブ3: Level 天下統一 ---
 with tab3:
     st.header("⚔️ 地方を統一せよ！タイムアタック")
     
@@ -158,7 +152,7 @@ with tab3:
             if st.button("決定！", key="tenka_btn"):
                 if ans_t == current_p:
                     st.success(f"⭕️ 正解！ {current_p} 攻略！")
-                    st.session_state.remaining_prefs.pop(0)
+                    st.session_state.remaining_prefs.pop(0) # 正解したのでリストから消す
                     if not st.session_state.remaining_prefs:
                         st.session_state.tenka_end_time = time.time()
                         st.session_state.tenka_status = "finished"
@@ -166,15 +160,17 @@ with tab3:
                     st.rerun()
                 else:
                     st.error(f"❌ まちがい！ 正解は【{current_p}】だよ。")
-                    st.info("正解するまで次に進めないぞ！タイムロスに注意だ！")
+                    # リストをシャッフルして順番を入れ替える（現在の問題は後ろのどこかへ行く）
+                    random.shuffle(st.session_state.remaining_prefs)
+                    st.info("順番を入れ替えたぞ！他の県から攻め落とそう！")
+                    time.sleep(1.5)
+                    st.rerun()
 
     elif st.session_state.tenka_status == "finished":
         final_time = st.session_state.tenka_end_time - st.session_state.tenka_start_time
         st.balloons()
         st.header(f"🎊 {st.session_state.tenka_region} 統一完了！")
         st.subheader(f"記録: {final_time:.2f} 秒")
-        
-        # 保存（この時、同一人物・同一地方の重複は削除される）
         save_ranking(st.session_state.tenka_user, st.session_state.tenka_region, final_time)
         
         if st.button("もう一度挑戦 / 他の地方へ"):
