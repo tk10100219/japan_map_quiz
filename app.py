@@ -120,39 +120,42 @@ with tab2:
             correct_ans = target['name']
         else:
             # レベル4「一緒か違うか」クイズ
-            st.subheader(f"赤くなっている **【 {target['name']} 】** の県庁所在地は、県名と一緒？違う？")
-            same_or_different = st.radio("答えを選んでね", ["一緒", "違う"], key="q4_status", horizontal=True)
-            
-            # システム側の正解判定用
+            # 【修正】システム側で、その都市が「本来一緒か・違うか」をまず厳密に判定
             actual_is_same = target['name'].replace('県','').replace('府','').replace('都','') == target['capital']
-            real_status = "一緒" if actual_is_same else "違う"
             
-            if same_or_different == "違う":
-                # 県名と県庁所在地が「異なる」都市のベースリスト
-                diff_capitals = df[df.apply(lambda row: row['name'].replace('県','').replace('府','').replace('都','') != row['capital'], axis=1)]['capital'].tolist()
-                
-                # 改良点：現在の問題（target_idx）に紐づく5択リストが未作成なら生成してセッションに固定
-                if 'q4_options' not in st.session_state or st.session_state.get('q4_target_idx') != st.session_state.target_idx:
-                    correct_cap = target['capital']
-                    # リストから正解を除外した残りの都市から、誤答をランダムに4つ選ぶ
-                    other_caps = [c for c in diff_capitals if c != correct_cap]
-                    wrong_caps = random.sample(other_caps, min(4, len(other_caps)))
-                    
-                    # 正解と誤答を合わせてシャッフル
-                    five_options = wrong_caps + [correct_cap]
-                    random.shuffle(five_options)
-                    
-                    # セッションに保存
-                    st.session_state.q4_options = five_options
-                    st.session_state.q4_target_idx = st.session_state.target_idx
-                
-                # 固定された5択を表示
-                chosen_capital = st.selectbox("正しい県庁所在地はどこ？", ["（えらんでね）"] + st.session_state.q4_options, key="q4_ans_val")
-                ans = f"違う（{chosen_capital}）"
-                correct_ans = f"違う（{target['capital']}）"
+            if actual_is_same:
+                # パターンA：本来「一緒」のクイズ（京都府、青森県など）
+                st.subheader(f"赤くなっている **【 {target['name']} 】** の県庁所在地は、県名と一緒？違う？")
+                ans = st.radio("答えを選んでね", ["一緒", "違う"], key="q4_status", horizontal=True)
+                correct_ans = "一緒"
             else:
-                ans = same_or_different
-                correct_ans = real_status
+                # パターンB：本来「違う」のクイズ（神奈川県、岩手県など）
+                st.subheader(f"赤くなっている **【 {target['name']} 】** の県庁所在地は、県名と一緒？違う？")
+                same_or_different = st.radio("答えを選んでね", ["一緒", "違う"], key="q4_status", horizontal=True)
+                
+                if same_or_different == "違う":
+                    # 県名と県庁所在地が「異なる」都市のベースリスト
+                    diff_capitals = df[df.apply(lambda row: row['name'].replace('県','').replace('府','').replace('都','') != row['capital'], axis=1)]['capital'].tolist()
+                    
+                    # 現在の問題（target_idx）に紐づく5択リストが未作成なら生成してセッションに固定
+                    if 'q4_options' not in st.session_state or st.session_state.get('q4_target_idx') != st.session_state.target_idx:
+                        correct_cap = target['capital']
+                        other_caps = [c for c in diff_capitals if c != correct_cap]
+                        wrong_caps = random.sample(other_caps, min(4, len(other_caps)))
+                        
+                        five_options = wrong_caps + [correct_cap]
+                        random.shuffle(five_options)
+                        
+                        st.session_state.q4_options = five_options
+                        st.session_state.q4_target_idx = st.session_state.target_idx
+                    
+                    chosen_capital = st.selectbox("正しい県庁所在地はどこ？", ["（えらんでね）"] + st.session_state.q4_options, key="q4_ans_val")
+                    ans = f"違う（{chosen_capital}）"
+                    correct_ans = f"違う（{target['capital']}）"
+                else:
+                    # 本来違うのに「一緒」を選んでしまった場合
+                    ans = same_or_different
+                    correct_ans = f"違う（{target['capital']}）"
 
         if st.button("こうげき！", key="normal_atk"):
             if ans == correct_ans:
