@@ -9,12 +9,12 @@ from japanmap import picture
 import random
 import time
 
-# --- 1. データ準備（capitalを追加） ---
+# --- 1. データ準備 ---
 data = {
     "name": ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"],
     "region": ["北海道", "東北", "東北", "東北", "東北", "東北", "東北", "関東", "関東", "関東", "関東", "関東", "関東", "関東", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "中部", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "近畿", "中国", "中国", "中国", "中国", "中国", "四国", "四国", "四国", "四国", "九州", "九州", "九州", "九州", "九州", "九州", "九州", "九州"],
     "hint": ["一番大きい！", "りんご1位", "わんこそば", "牛タン", "なまはげ", "さくらんぼ", "赤べこ", "納豆", "餃子", "焼きまんじゅう", "深谷ねぎ", "落花生", "首都", "中華街", "お米", "黒部ダム", "兼六園", "恐竜", "富士山", "お蕎麦", "白川郷", "お茶1位", "トヨタ", "伊勢神宮", "琵琶湖", "金閣寺", "たこ焼き", "姫路城", "公園の鹿", "みかんと梅", "砂丘", "出雲大社", "桃太郎", "厳島神社", "フグ", "阿波踊り", "うどん", "みかん", "坂本龍馬", "屋台ラーメン", "有田焼", "カステラ", "阿蘇山", "温泉", "マンゴー", "桜島", "美ら海"],
-    "capital": ["札幌", "青森", "盛岡", "仙台", "秋田", "山形", "福島", "水戸", "宇取宮", "前橋", "さいたま", "千葉", "東京", "横浜", "新潟", "富山", "金沢", "福井", "甲府", "長野", "岐阜", "静岡", "名古屋", "津", "大津", "京都", "大阪", "神戸", "奈良", "和歌山", "鳥取", "松江", "岡山", "広島", "山口", "徳島", "高松", "松山", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "那覇"]
+    "capital": ["札幌", "青森", "盛岡", "仙台", "秋田", "山形", "福島", "水戸", "宇都宮", "前橋", "さいたま", "千葉", "東京", "横浜", "新潟", "富山", "金沢", "福井", "甲府", "長野", "岐阜", "静岡", "名古屋", "津", "大津", "京都", "大阪", "神戸", "奈良", "和歌山", "鳥取", "松江", "岡山", "広島", "山口", "徳島", "高松", "松山", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "那覇"]
 }
 df = pd.DataFrame(data)
 
@@ -34,7 +34,6 @@ def save_ranking(name, region, score):
     new_data = pd.DataFrame([[name, region, round(score, 2)]], columns=["名前", "地方", "タイム(秒)"])
     rdf = pd.concat([rdf, new_data], ignore_index=True)
     if not rdf.empty:
-        # 重複削除：同一人物の同一地方ベストタイムのみ残す
         rdf = rdf.sort_values("タイム(秒)").drop_duplicates(subset=["名前", "地方"], keep="first")
     rdf.to_csv(RANKING_FILE, index=False)
 
@@ -78,11 +77,10 @@ with tab1:
         ax.axis('off')
         st.pyplot(fig)
         
-        # 選択された県の県庁所在地を取得してメッセージに組み込み
         selected_capital = df[df['name'] == selected_pref]['capital'].values[0]
         st.success(f"いま赤くなっているのが **【 {selected_pref} 】** だよ！ （県庁所在地：**{selected_capital}**）")
 
-# --- タブ2: クイズに挑戦（レベル4：一緒/違うクイズを追加） ---
+# --- タブ2: クイズに挑戦 ---
 with tab2:
     level = st.sidebar.selectbox(
         "レベル", 
@@ -121,17 +119,35 @@ with tab2:
             ans = st.selectbox("答え", ["（えらんでね）"] + sorted(df['name'].tolist()), key="q3_ans")
             correct_ans = target['name']
         else:
-            # 新設：レベル4「一緒か違うか」クイズ（違う場合は都市名まで選ばせる）
+            # レベル4「一緒か違うか」クイズ
             st.subheader(f"赤くなっている **【 {target['name']} 】** の県庁所在地は、県名と一緒？違う？")
             same_or_different = st.radio("答えを選んでね", ["一緒", "違う"], key="q4_status", horizontal=True)
             
-            # システム側の正解判定用（都府県を除いた名前と県庁所在地が一致するか）
+            # システム側の正解判定用
             actual_is_same = target['name'].replace('県','').replace('府','').replace('都','') == target['capital']
             real_status = "一緒" if actual_is_same else "違う"
             
             if same_or_different == "違う":
-                # 「違う」を選んだときだけ、さらに県庁所在地のセレクトボックスを出現させる
-                chosen_capital = st.selectbox("正しい県庁所在地はどこ？", ["（えらんでね）"] + sorted(df['capital'].tolist()), key="q4_ans_val")
+                # 県名と県庁所在地が「異なる」都市のベースリスト
+                diff_capitals = df[df.apply(lambda row: row['name'].replace('県','').replace('府','').replace('都','') != row['capital'], axis=1)]['capital'].tolist()
+                
+                # 改良点：現在の問題（target_idx）に紐づく5択リストが未作成なら生成してセッションに固定
+                if 'q4_options' not in st.session_state or st.session_state.get('q4_target_idx') != st.session_state.target_idx:
+                    correct_cap = target['capital']
+                    # リストから正解を除外した残りの都市から、誤答をランダムに4つ選ぶ
+                    other_caps = [c for c in diff_capitals if c != correct_cap]
+                    wrong_caps = random.sample(other_caps, min(4, len(other_caps)))
+                    
+                    # 正解と誤答を合わせてシャッフル
+                    five_options = wrong_caps + [correct_cap]
+                    random.shuffle(five_options)
+                    
+                    # セッションに保存
+                    st.session_state.q4_options = five_options
+                    st.session_state.q4_target_idx = st.session_state.target_idx
+                
+                # 固定された5択を表示
+                chosen_capital = st.selectbox("正しい県庁所在地はどこ？", ["（えらんでね）"] + st.session_state.q4_options, key="q4_ans_val")
                 ans = f"違う（{chosen_capital}）"
                 correct_ans = f"違う（{target['capital']}）"
             else:
@@ -199,17 +215,14 @@ with tab3:
         final_time = st.session_state.tenka_end_time - st.session_state.tenka_start_time
         st.balloons()
         
-        # 記録を保存
         save_ranking(st.session_state.tenka_user, st.session_state.tenka_region, final_time)
         
-        # 攻略後画面
         st.header(f"🎊 {st.session_state.tenka_region} 統一完了！")
         st.subheader(f"軍師 {st.session_state.tenka_user} 殿の記録: {final_time:.2f} 秒")
         
         st.divider()
         st.subheader(f"🏆 {st.session_state.tenka_region}地方 歴代記録（TOP5）")
         
-        # 最新のランキングを読み込んでその地方のTOP5を表示
         current_rank = load_ranking()
         res_df = current_rank[current_rank["地方"] == st.session_state.tenka_region].sort_values(by="タイム(秒)").head(5)
         if not res_df.empty:
